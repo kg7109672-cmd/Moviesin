@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sunny Movies</title>
+<meta name="description" content="Browse movies by language, genre and year, and open download links.">
+<meta property="og:title" content="Sunny Movies"><meta property="og:type" content="website">
+<style>
+:root{--bg:#16131f;--panel:#211d2e;--line:#352f47;--text:#f2eee6;--mute:#a79fb8;--gold:#ffb347;--r:14px}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--text);font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+a{color:inherit;text-decoration:none}
+h1,h2,h3{font-family:Georgia,"Times New Roman",serif;font-weight:700}
+:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.wrap{max-width:1200px;margin:auto;padding:0 16px}
+header.top{position:sticky;top:0;z-index:5;background:rgba(22,19,31,.95);border-bottom:1px solid var(--line)}
+header.top .wrap{display:flex;align-items:center;height:60px}
+.logo{font-family:Georgia,serif;font-size:1.3rem;font-weight:700;color:var(--gold)}
+.hero{min-height:56vh;display:flex;align-items:flex-end;background-size:cover;background-position:center;background-color:#2a2140}
+.hero .shade{width:100%;padding:90px 0 32px;background:linear-gradient(to top,var(--bg),rgba(22,19,31,.2))}
+.hero h1{font-size:clamp(2rem,6vw,3.6rem);line-height:1.1}
+.hero p{color:var(--mute);max-width:560px;margin:10px 0 18px}
+.btn{display:inline-block;border:0;border-radius:10px;padding:12px 20px;background:var(--gold);color:#1b1305;font-weight:700;font-size:1rem;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+.btn.danger{background:#e2556b;color:#fff}
+.filters{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:22px 0}
+.filters .q{grid-column:1/-1}
+input,select,textarea{width:100%;padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--panel);color:var(--text);font:inherit}
+textarea{min-height:90px}
+label{display:block;margin:12px 0 4px;color:var(--mute);font-size:.9rem}
+@media(min-width:700px){.filters{grid-template-columns:2fr 1fr 1fr 1fr}.filters .q{grid-column:auto}}
+.count{color:var(--mute);margin-bottom:12px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:16px;padding-bottom:40px}
+.card{background:var(--panel);border-radius:var(--r);overflow:hidden;transition:transform .15s}
+.card:hover{transform:translateY(-4px)}
+.card img,.ph{width:100%;aspect-ratio:2/3;object-fit:cover;display:block;background:#2a2140}
+.ph{display:flex;align-items:center;justify-content:center;padding:12px;text-align:center;font-family:Georgia,serif;color:var(--gold)}
+.info{padding:10px 12px 12px}.info h3{font-size:1rem}.info p{color:var(--mute);font-size:.85rem}
+.empty{grid-column:1/-1;text-align:center;color:var(--mute);padding:40px 0}
+.detail{display:grid;gap:24px;padding:28px 0 40px}
+@media(min-width:760px){.detail{grid-template-columns:280px 1fr}}
+.detail .poster{border-radius:var(--r);width:100%;max-width:280px}
+.detail h1{font-size:clamp(1.8rem,5vw,2.8rem)}
+.meta{color:var(--mute);margin:8px 0 16px}
+.tags span{display:inline-block;border:1px solid var(--line);border-radius:99px;padding:3px 12px;margin:0 6px 6px 0;font-size:.85rem}
+.crew p{margin:6px 0;color:var(--mute)}.crew b{color:var(--text)}
+.video{aspect-ratio:16/9;margin:16px 0}.video iframe{width:100%;height:100%;border:0;border-radius:var(--r)}
+.dl{background:var(--panel);border-radius:var(--r);padding:16px;margin-top:20px}
+.dl-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-top:1px solid var(--line)}
+.dl-row:first-of-type{border-top:0}
+footer{border-top:1px solid var(--line);padding:24px 0;color:var(--mute);font-size:.85rem;text-align:center}
+.admin{display:grid;gap:24px;padding:24px 0 50px}
+@media(min-width:900px){.admin{grid-template-columns:1fr 1fr}}
+.panel{background:var(--panel);border-radius:var(--r);padding:18px}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type{border-top:0}.row div{display:flex;gap:8px}.row .btn{padding:7px 12px;font-size:.85rem}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.note{background:#2a2140;border-left:4px solid var(--gold);padding:12px 14px;border-radius:8px;color:var(--mute);margin-top:16px;font-size:.9rem}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--gold);color:#1b1305;padding:10px 18px;border-radius:10px;font-weight:700;display:none;z-index:9}
+@media(prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top"><div class="wrap"><a class="logo" href="#/">Sunny Movies</a></div></header>
+<div id="app"></div>
+<footer><div class="wrap">Download links are provided only for content the site owner has permission to share.</div></footer>
+<div class="toast" id="toast" role="status"></div>
+
+<!-- YOUR MOVIES (the admin panel updates this block when you export) -->
+<script id="movie-data" type="application/json">
+[
+ {
+  "title": "Midnight Harbor",
+  "slug": "midnight-harbor",
+  "poster": "",
+  "backdrop": "",
+  "description": "A dockworker uncovers a smuggling ring and has one night to stop it. (Sample data)",
+  "year": 2026,
+  "language": "Telugu",
+  "industry": "Tollywood",
+  "genres": [
+   "Action",
+   "Thriller"
+  ],
+  "runtime": "2h 25m",
+  "rating": 8.2,
+  "director": "Sample Director",
+  "writers": [
+   "Sample Writer"
+  ],
+  "producers": [
+   "Sample Producer"
+  ],
+  "cast": [
+   "Actor One",
+   "Actress One"
+  ],
+  "trailer": "",
+  "featured": true,
+  "downloads": [
+   {
+    "quality": "720p",
+    "size": "800 MB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   },
+   {
+    "quality": "1080p",
+    "size": "2.1 GB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   }
+  ]
+ },
+ {
+  "title": "Paper Lanterns",
+  "slug": "paper-lanterns",
+  "poster": "",
+  "backdrop": "",
+  "description": "Two strangers share a train journey that changes both their lives. (Sample data)",
+  "year": 2025,
+  "language": "Hindi",
+  "industry": "Bollywood",
+  "genres": [
+   "Drama",
+   "Romance"
+  ],
+  "runtime": "2h 10m",
+  "rating": 7.6,
+  "director": "Sample Director",
+  "writers": [
+   "Sample Writer"
+  ],
+  "producers": [
+   "Sample Producer"
+  ],
+  "cast": [
+   "Actor Two",
+   "Actress Two"
+  ],
+  "trailer": "",
+  "featured": false,
+  "downloads": [
+   {
+    "quality": "720p",
+    "size": "800 MB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   },
+   {
+    "quality": "1080p",
+    "size": "2.1 GB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   }
+  ]
+ },
+ {
+  "title": "Iron Monsoon",
+  "slug": "iron-monsoon",
+  "poster": "",
+  "backdrop": "",
+  "description": "A retired engineer returns to defend his village from a flood. (Sample data)",
+  "year": 2024,
+  "language": "Tamil",
+  "industry": "Kollywood",
+  "genres": [
+   "Action",
+   "Drama"
+  ],
+  "runtime": "2h 40m",
+  "rating": 7.9,
+  "director": "Sample Director",
+  "writers": [
+   "Sample Writer"
+  ],
+  "producers": [
+   "Sample Producer"
+  ],
+  "cast": [
+   "Actor Three",
+   "Actress Three"
+  ],
+  "trailer": "",
+  "featured": false,
+  "downloads": [
+   {
+    "quality": "720p",
+    "size": "800 MB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   },
+   {
+    "quality": "1080p",
+    "size": "2.1 GB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   }
+  ]
+ },
+ {
+  "title": "Backwater Secrets",
+  "slug": "backwater-secrets",
+  "poster": "",
+  "backdrop": "",
+  "description": "A detective follows clues through a quiet village of canals. (Sample data)",
+  "year": 2025,
+  "language": "Malayalam",
+  "industry": "Mollywood",
+  "genres": [
+   "Mystery",
+   "Crime"
+  ],
+  "runtime": "2h 5m",
+  "rating": 8.0,
+  "director": "Sample Director",
+  "writers": [
+   "Sample Writer"
+  ],
+  "producers": [
+   "Sample Producer"
+  ],
+  "cast": [
+   "Actor Four",
+   "Actress Four"
+  ],
+  "trailer": "",
+  "featured": false,
+  "downloads": [
+   {
+    "quality": "720p",
+    "size": "800 MB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   },
+   {
+    "quality": "1080p",
+    "size": "2.1 GB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   }
+  ]
+ },
+ {
+  "title": "Last Orbit",
+  "slug": "last-orbit",
+  "poster": "",
+  "backdrop": "",
+  "description": "The final crew on a failing station races to bring everyone home. (Sample data)",
+  "year": 2026,
+  "language": "English",
+  "industry": "Hollywood",
+  "genres": [
+   "Sci-Fi",
+   "Adventure"
+  ],
+  "runtime": "2h 15m",
+  "rating": 8.4,
+  "director": "Sample Director",
+  "writers": [
+   "Sample Writer"
+  ],
+  "producers": [
+   "Sample Producer"
+  ],
+  "cast": [
+   "Actor Five",
+   "Actress Five"
+  ],
+  "trailer": "",
+  "featured": false,
+  "downloads": [
+   {
+    "quality": "720p",
+    "size": "800 MB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   },
+   {
+    "quality": "1080p",
+    "size": "2.1 GB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   }
+  ]
+ },
+ {
+  "title": "Laugh Riot",
+  "slug": "laugh-riot",
+  "poster": "",
+  "backdrop": "",
+  "description": "A wedding goes wrong in every possible way. (Sample data)",
+  "year": 2023,
+  "language": "Kannada",
+  "industry": "Sandalwood",
+  "genres": [
+   "Comedy",
+   "Family"
+  ],
+  "runtime": "2h 0m",
+  "rating": 7.1,
+  "director": "Sample Director",
+  "writers": [
+   "Sample Writer"
+  ],
+  "producers": [
+   "Sample Producer"
+  ],
+  "cast": [
+   "Actor Six",
+   "Actress Six"
+  ],
+  "trailer": "",
+  "featured": false,
+  "downloads": [
+   {
+    "quality": "720p",
+    "size": "800 MB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   },
+   {
+    "quality": "1080p",
+    "size": "2.1 GB",
+    "url": "https://www.mediafire.com/file/REPLACE_WITH_YOUR_LINK"
+   }
+  ]
+ }
+]
+</script>
+
+<script>
+// ===== SETTINGS =====
+// Admin panel is hidden. Open it with:  yoursite/index.html#admin-SECRET
+// Change the word below to your own secret before uploading.
+const SECRET = "change-this-secret";
+// ====================
+
+const $ = s => document.querySelector(s), app = $("#app"), KEY = "movies_v1";
+let movies = loadMovies();
+
+function loadMovies() {
+  try { const s = localStorage.getItem(KEY); if (s) return JSON.parse(s); } catch (e) {}
+  return JSON.parse($("#movie-data").textContent);
+}
+const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const safeUrl = u => /^https?:\/\//i.test(u) ? u : "";
+const slugify = t => t.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/(^-|-$)/g, "");
+const toast = t => { const el = $("#toast"); el.textContent = t; el.style.display = "block"; setTimeout(() => el.style.display = "none", 2400); };
+const card = m => `<a class="card" href="#/movie/${encodeURIComponent(m.slug)}">${m.poster ? `<img src="${esc(m.poster)}" alt="${esc(m.title)} poster" loading="lazy">` : `<div class="ph">${esc(m.title)}</div>`}
+  <div class="info"><h3>${esc(m.title)}</h3><p>${esc(m.year)} • ${esc(m.language)}</p><p>⭐ ${esc(m.rating)}</p></div></a>`;
+
+/* ---------- HOME ---------- */
+function showHome() {
+  document.title = "Sunny Movies";
+  const f = movies.find(m => m.featured) || movies[0];
+  const opts = (vals, label) => `<option value="">${label}</option>` + [...new Set(vals)].sort().map(v => `<option>${esc(v)}</option>`).join("");
+  app.innerHTML = (f ? `<section class="hero" style="${f.backdrop ? `background-image:url('${esc(f.backdrop)}')` : ""}"><div class="shade"><div class="wrap">
+      <h1>${esc(f.title)}</h1><p>${esc(f.description)}</p><a class="btn" href="#/movie/${encodeURIComponent(f.slug)}">View details</a></div></div></section>` : "") +
+    `<main class="wrap"><div class="filters">
+      <input class="q" id="q" type="search" placeholder="Search title, actor, director, year…" aria-label="Search movies">
+      <select id="lang" aria-label="Language">${opts(movies.map(m => m.language), "All languages")}</select>
+      <select id="genre" aria-label="Genre">${opts(movies.flatMap(m => m.genres), "All genres")}</select>
+      <select id="year" aria-label="Year">${opts(movies.map(m => m.year).sort((a, b) => b - a), "All years")}</select></div>
+      <p class="count" id="count"></p><div class="grid" id="grid"></div></main>`;
+  const render = () => {
+    const q = $("#q").value.toLowerCase().trim(), L = $("#lang").value, G = $("#genre").value, Y = $("#year").value;
+    const list = movies.filter(m => {
+      const hay = [m.title, m.director, m.language, m.industry, m.year, ...(m.cast || []), ...(m.genres || [])].join(" ").toLowerCase();
+      return (!q || hay.includes(q)) && (!L || m.language === L) && (!G || m.genres.includes(G)) && (!Y || String(m.year) === Y);
+    });
+    $("#count").textContent = list.length + (list.length === 1 ? " movie" : " movies");
+    $("#grid").innerHTML = list.length ? list.map(card).join("") : `<p class="empty">No movies found. Try a different search or clear a filter.</p>`;
+  };
+  ["#q", "#lang", "#genre", "#year"].forEach(s => $(s).addEventListener("input", render));
+  render();
+}
+
+/* ---------- MOVIE DETAILS ---------- */
+function showMovie(slug) {
+  const m = movies.find(x => x.slug === slug);
+  if (!m) { app.innerHTML = `<main class="wrap"><p class="empty">Movie not found. <a href="#/" style="color:var(--gold)">Back to all movies</a></p></main>`; return; }
+  document.title = m.title + " | Sunny Movies";
+  const list = a => (a && a.length ? a.join(", ") : "—");
+  const downloads = (m.downloads || []).filter(d => safeUrl(d.url));
+  const rel = movies.filter(x => x.slug !== m.slug && x.genres.some(g => m.genres.includes(g))).slice(0, 6);
+  app.innerHTML = `<main class="wrap"><div class="detail"><div>${m.poster ? `<img class="poster" src="${esc(m.poster)}" alt="${esc(m.title)} poster">` : `<div class="ph poster">${esc(m.title)}</div>`}</div>
+    <div><h1>${esc(m.title)}</h1>
+      <p class="meta">${esc(m.year)} • ${esc(m.language)} • ${esc(m.industry)} • ${esc(m.runtime)} • ⭐ ${esc(m.rating)}</p>
+      <div class="tags">${m.genres.map(g => `<span>${esc(g)}</span>`).join("")}</div>
+      <p style="margin:12px 0">${esc(m.description)}</p>
+      <div class="crew"><p><b>Director:</b> ${esc(m.director)}</p><p><b>Writers:</b> ${esc(list(m.writers))}</p>
+      <p><b>Producers:</b> ${esc(list(m.producers))}</p><p><b>Cast:</b> ${esc(list(m.cast))}</p></div>
+      ${m.trailer ? `<button class="btn ghost" id="tbtn" style="margin-top:16px">Watch trailer</button><div id="trailer"></div>` : ""}
+      <div class="dl"><h2>Download</h2>${downloads.length ? downloads.map(d => `<div class="dl-row"><div><b>${esc(d.quality)}</b><br><span class="meta">${esc(d.size)}</span></div>
+        <button class="btn" data-url="${esc(d.url)}">Download</button></div>`).join("") : `<p class="meta">No download links yet.</p>`}</div></div></div>
+    ${rel.length ? `<h2 style="margin-bottom:14px">Related movies</h2><div class="grid">${rel.map(card).join("")}</div>` : ""}</main>`;
+  document.querySelectorAll("[data-url]").forEach(b => b.onclick = () => window.open(b.dataset.url, "_blank", "noopener"));
+  const tb = $("#tbtn");
+  if (tb) tb.onclick = () => {
+    const u = safeUrl(m.trailer), yt = u.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/|youtube\.com\/embed\/)([\w-]{11})/);
+    $("#trailer").innerHTML = yt ? `<div class="video"><iframe src="https://www.youtube.com/embed/${yt[1]}" allowfullscreen title="Trailer"></iframe></div>`
+      : `<p class="meta"><a href="${esc(u)}" target="_blank" rel="noopener" style="color:var(--gold)">Open trailer</a></p>`;
+    tb.style.display = "none";
+  };
+}
+
+/* ---------- ADMIN (hidden) ---------- */
+function showAdmin() {
+  document.title = "Admin | Sunny Movies";
+  let editing = null;
+  app.innerHTML = `<main class="wrap admin">
+  <section class="panel"><h2>Your movies</h2><div id="list"></div>
+    <div style="display:flex;gap:10px;margin-top:16px;flex-wrap:wrap"><button class="btn" id="export">Export index.html</button><button class="btn ghost" id="reset">Reset changes</button><a class="btn ghost" href="#/">View site</a></div>
+    <p class="note">Changes are saved in this browser only. To publish them: click <b>Export index.html</b>, then upload the downloaded file to GitHub, replacing the old index.html.</p></section>
+  <section class="panel"><h2 id="formTitle">Add movie</h2>
+  <form id="form" onsubmit="return false">
+    <label>Title</label><input name="title">
+    <label>Poster image link (a web link, or images/posters/name.jpg)</label><input name="poster">
+    <label>Backdrop image link (a web link, or images/backdrops/name.jpg)</label><input name="backdrop">
+    <label>Description</label><textarea name="description"></textarea>
+    <div class="two"><div><label>Year</label><input name="year" type="number"></div><div><label>Rating (0–10)</label><input name="rating" type="number" step="0.1"></div></div>
+    <div class="two"><div><label>Language</label><input name="language"></div><div><label>Industry</label><input name="industry"></div></div>
+    <label>Genres (comma separated)</label><input name="genres">
+    <div class="two"><div><label>Runtime</label><input name="runtime" placeholder="2h 15m"></div><div><label>Director</label><input name="director"></div></div>
+    <label>Writers (comma separated)</label><input name="writers">
+    <label>Producers (comma separated)</label><input name="producers">
+    <label>Cast (comma separated)</label><input name="cast">
+    <label>Trailer URL (YouTube link)</label><input name="trailer">
+    <label>Download links — one per line: quality | size | MediaFire link</label>
+    <textarea name="downloads" placeholder="720p | 800 MB | https://www.mediafire.com/file/..."></textarea>
+    <label style="display:flex;gap:8px;align-items:center"><input type="checkbox" name="featured" style="width:auto"> Show as featured banner on home page</label>
+    <div style="display:flex;gap:10px;margin-top:16px"><button class="btn" id="save">Add movie</button><button class="btn ghost" id="clear">Clear form</button></div>
+  </form></section></main>`;
+  const f = $("#form"), csv = v => v.split(",").map(s => s.trim()).filter(Boolean);
+
+  function renderList() {
+    $("#list").innerHTML = movies.length ? movies.map(m => `<div class="row"><span>${esc(m.title)} <small style="color:var(--mute)">(${esc(m.year)})</small></span>
+      <div><button class="btn ghost" data-edit="${esc(m.slug)}">Edit</button><button class="btn danger" data-del="${esc(m.slug)}">Delete</button></div></div>`).join("")
+      : `<p class="meta">No movies yet. Fill in the form to add your first one.</p>`;
+    document.querySelectorAll("[data-edit]").forEach(b => b.onclick = () => edit(b.dataset.edit));
+    document.querySelectorAll("[data-del]").forEach(b => b.onclick = () => {
+      if (!confirm("Delete this movie?")) return;
+      movies = movies.filter(m => m.slug !== b.dataset.del); localStorage.setItem(KEY, JSON.stringify(movies)); renderList(); toast("Deleted");
+    });
+  }
+  function edit(slug) {
+    const m = movies.find(x => x.slug === slug); editing = slug;
+    f.title.value = m.title; f.poster.value = m.poster; f.backdrop.value = m.backdrop; f.description.value = m.description;
+    f.year.value = m.year; f.language.value = m.language; f.industry.value = m.industry; f.genres.value = m.genres.join(", ");
+    f.runtime.value = m.runtime; f.rating.value = m.rating; f.director.value = m.director;
+    f.writers.value = m.writers.join(", "); f.producers.value = m.producers.join(", "); f.cast.value = m.cast.join(", ");
+    f.trailer.value = m.trailer; f.featured.checked = !!m.featured;
+    f.downloads.value = (m.downloads || []).map(d => `${d.quality} | ${d.size} | ${d.url}`).join("\n");
+    $("#formTitle").textContent = "Edit movie"; $("#save").textContent = "Update movie"; f.scrollIntoView({ behavior: "smooth" });
+  }
+  function clearForm() { f.reset(); editing = null; $("#formTitle").textContent = "Add movie"; $("#save").textContent = "Add movie"; }
+
+  $("#save").onclick = () => {
+    if (!f.title.value.trim()) { toast("Enter a title first"); return; }
+    const downloads = f.downloads.value.split("\n").map(l => l.split("|").map(s => s.trim())).filter(p => p.length >= 3 && p[0]).map(p => ({ quality: p[0], size: p[1], url: p.slice(2).join("|") }));
+    const m = { title: f.title.value.trim(), slug: editing || slugify(f.title.value), poster: f.poster.value.trim(), backdrop: f.backdrop.value.trim(),
+      description: f.description.value.trim(), year: Number(f.year.value) || new Date().getFullYear(), language: f.language.value.trim(),
+      industry: f.industry.value.trim(), genres: csv(f.genres.value), runtime: f.runtime.value.trim(), rating: Number(f.rating.value) || 0,
+      director: f.director.value.trim(), writers: csv(f.writers.value), producers: csv(f.producers.value), cast: csv(f.cast.value),
+      trailer: f.trailer.value.trim(), featured: f.featured.checked, downloads };
+    if (m.featured) movies.forEach(x => x.featured = false);
+    const i = movies.findIndex(x => x.slug === m.slug);
+    if (i >= 0) movies[i] = m; else movies.unshift(m);
+    localStorage.setItem(KEY, JSON.stringify(movies)); renderList(); clearForm(); toast("Saved");
+  };
+  $("#clear").onclick = clearForm;
+  $("#reset").onclick = () => {
+    if (!confirm("Discard changes made in this browser and go back to the movies saved in the file?")) return;
+    localStorage.removeItem(KEY); movies = loadMovies(); renderList(); clearForm(); toast("Reset");
+  };
+  $("#export").onclick = async () => {
+    try {
+      const src = await (await fetch(location.href.split("#")[0], { cache: "reload" })).text();
+      const open = '<scr' + 'ipt id="movie-data" type="application/json">', close = '</scr' + 'ipt>';
+      const a = src.indexOf(open) + open.length, b = src.indexOf(close, a);
+      if (a < open.length || b < 0) throw new Error("data block not found");
+      const out = src.slice(0, a) + "\n" + JSON.stringify(movies, null, 1).replace(/</g, "\\u003c") + "\n" + src.slice(b);
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(new Blob([out], { type: "text/html" })); link.download = "index.html"; link.click();
+    } catch (e) { toast("Export works on the live site (GitHub Pages), not from a file on your phone"); }
+  };
+  renderList();
+}
+
+/* ---------- ROUTER ---------- */
+function route() {
+  const h = location.hash, m = h.match(/^#\/movie\/(.+)$/);
+  window.scrollTo(0, 0);
+  if (h === "#admin-" + SECRET) showAdmin();
+  else if (m) showMovie(decodeURIComponent(m[1]));
+  else showHome();
+}
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>
